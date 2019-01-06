@@ -44,15 +44,6 @@ enum CompassDirection {
 }
 
 /**
- * The status of a shipment
- */
-enum ShipmentStatus {
-  o CREATED
-  o IN_TRANSIT
-  o ARRIVED
-}
-
-/**
  * An Accelerometer reading for a shipment. E.g. received from a
  * device within an accelerometer controlled shipping container
  *
@@ -68,6 +59,15 @@ transaction AccelReading extends ShipmentTransaction {
   o String latitude
   o String longitude
   o String readingTime
+}
+
+/**
+ * The status of a shipment
+ */
+enum ShipmentStatus {
+  o CREATED
+  o IN_TRANSIT
+  o ARRIVED
 }
 
 /**
@@ -117,9 +117,9 @@ asset Shipment identified by shipmentId {
   o ProductType type
   o ShipmentStatus status
   o Long unitCount
-  o TemperatureReading[] temperatureReadings optional
   o AccelReading[] AccelReadings optional
   o GpsReading[] gpsReadings optional
+  o TemperatureReading[] temperatureReadings optional
   --> Contract contract
 }
 
@@ -142,6 +142,41 @@ asset Contract identified by contractId {
   o Double maxPenaltyFactor
   o Double maxAccel
 }
+
+/**
+ * An event - when the temperature goes outside the agreed-upon boundaries
+ */
+event TemperatureThresholdEvent {
+  o String message
+  o Double temperature
+  o String latitude
+  o String longitude
+  o String readingTime
+  --> Shipment shipment
+}
+
+/**
+ * An event - when the acceleration event has been detected
+ */
+event AccelerationThresholdEvent {
+  o String message
+  o Double accel_x
+  o Double accel_y
+  o Double accel_z
+  o String latitude
+  o String longitude
+  o String readingTime
+  --> Shipment shipment
+}
+
+/**
+ * An event - when the ship arrives at the port
+ */
+event ShipmentInPortEvent {
+  o String message
+  --> Shipment shipment
+}
+
 
 /**
  * A concept for a simple street address
@@ -184,38 +219,4 @@ participant Importer extends Business {
  * JUST FOR INITIALIZING A DEMO
  */
 transaction SetupDemo {
-}
-
-/**
- * An event - when the temperature goes outside the agreed-upon boundaries
- */
-event TemperatureThresholdEvent {
-  o String message
-  o Double temperature
-  o String latitude
-  o String longitude
-  o String readingTime
-  --> Shipment shipment
-}
-
-/**
- * An event - when the acceleration event has been detected
- */
-event AccelerationThresholdEvent {
-  o String message
-  o Double accel_x
-  o Double accel_y
-  o Double accel_z
-  o String latitude
-  o String longitude
-  o String readingTime
-  --> Shipment shipment
-}
-
-/**
- * An event - when the ship arrives at the port
- */
-event ShipmentInPortEvent {
-  o String message
-  --> Shipment shipment
 }
