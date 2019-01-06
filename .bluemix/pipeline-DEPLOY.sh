@@ -45,14 +45,15 @@ function deploy_composer_contract {
     BUSINESS_NETWORK_CARD=admin@${BUSINESS_NETWORK_NAME}
     for BUSINESS_NETWORK_ARCHIVE in ${BUSINESS_NETWORK_ARCHIVES}
     do
-        if ! OUTPUT=$(composer network install -c ${BLOCKCHAIN_NETWORK_CARD} -a ${BUSINESS_NETWORK_ARCHIVES} 2>&1)
-        then
+        while ! OUTPUT=$(composer network install -c ${BLOCKCHAIN_NETWORK_CARD} -a ${BUSINESS_NETWORK_ARCHIVES} 2>&1)
+        do
             if [[ "${OUTPUT}" != *"already installed"* ]]
             then
-                echo failed to install composer contract ${CONTRACT}
-                exit 1
+                sleep 30
+            else
+                break
             fi
-        fi
+        done
         while ! OUTPUT=$(composer network start -c ${BLOCKCHAIN_NETWORK_CARD} -n ${BUSINESS_NETWORK_NAME} -V ${BUSINESS_NETWORK_VERSION} -A ${BLOCKCHAIN_NETWORK_ENROLL_ID} -S ${BLOCKCHAIN_NETWORK_ENROLL_SECRET} -f adminCard.card 2>&1)
         do
             if [[ "${OUTPUT}" = *"REQUEST_TIMEOUT"* ]]
@@ -170,10 +171,11 @@ function deploy_composer_rest_server {
     pushd contracts/${CONTRACT}
     BUSINESS_NETWORK_NAME=$(jq --raw-output '.name' package.json)
     BUSINESS_NETWORK_CARD=admin@${BUSINESS_NETWORK_NAME}
-    CF_APP_NAME=composer-rest-server-${BUSINESS_NETWORK_NAME}
+    CF_APP_NAME=rest-${BUSINESS_NETWORK_NAME}
     cf push \
         ${CF_APP_NAME} \
-        --docker-image ibmblockchain/composer-rest-server:${COMPOSER_VERSION} \
+        --docker-image sstone1/composer-rest-server:0.20.1 \
+        --random-route \
         -i 1 \
         -m 256M \
         --no-start \
@@ -210,7 +212,7 @@ function deploy_cf_app {
     APP=$1
     echo deploying cloud foundry app ${APP}
     pushd apps/${APP}
-    cf push ${APP} -i 1 -m 128M --no-start
+    cf push ${APP} -i 1 -m 128M --no-start --random-route
     cf bind-service ${APP} ${BLOCKCHAIN_SERVICE_INSTANCE} -c '{"permissions":"read-only"}'
     popd
 }
@@ -245,7 +247,7 @@ function gather_composer_rest_server_url {
     echo gathering rest server url for composer contract ${CONTRACT}
     pushd contracts/${CONTRACT}
     BUSINESS_NETWORK_NAME=$(jq --raw-output '.name' package.json)
-    CF_APP_NAME=composer-rest-server-${BUSINESS_NETWORK_NAME}
+    CF_APP_NAME=rest-${BUSINESS_NETWORK_NAME}
     REST_SERVER_URL=$(cf app ${CF_APP_NAME} | grep routes: | awk '{print $2}')
     export REST_SERVER_URLS=$(echo ${REST_SERVER_URLS} | jq ". + {\"${BUSINESS_NETWORK_NAME}\":\"https://${REST_SERVER_URL}\"}")
     popd
@@ -313,7 +315,7 @@ function start_composer_rest_server {
     echo starting rest server for composer contract ${CONTRACT}
     pushd contracts/${CONTRACT}
     BUSINESS_NETWORK_NAME=$(jq --raw-output '.name' package.json)
-    CF_APP_NAME=composer-rest-server-${BUSINESS_NETWORK_NAME}
+    CF_APP_NAME=rest-${BUSINESS_NETWORK_NAME}
     cf start ${CF_APP_NAME}
     popd
 }
